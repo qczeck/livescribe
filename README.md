@@ -85,6 +85,14 @@ On first launch, macOS will prompt for Screen Recording access. Grant it, then c
 
 The `install.sh` script still sets up the Python environment and config file, so ⌘R works without any further manual steps.
 
+### Uninstall
+
+```bash
+bash uninstall.sh
+```
+
+Removes the app, config, and Python venv. Prompts before deleting your transcripts.
+
 ---
 
 ## Running
