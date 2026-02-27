@@ -31,6 +31,7 @@ final class SpeechTranscriber: TranscriptionEngine {
 
     func start() {
         accumulatedTranscript = ""
+        isOnDevice = recognizer?.supportsOnDeviceRecognition ?? false
         requestAuthorization { [weak self] in
             self?.beginRecognition()
         }
@@ -81,7 +82,8 @@ final class SpeechTranscriber: TranscriptionEngine {
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
 
-        isOnDevice = recognizer.supportsOnDeviceRecognition
+        // isOnDevice starts true when supportsOnDeviceRecognition is true,
+        // and gets set to false permanently if on-device fails (e.g. Siri disabled).
         if isOnDevice {
             req.requiresOnDeviceRecognition = true
         }
@@ -108,12 +110,19 @@ final class SpeechTranscriber: TranscriptionEngine {
                     let nsErr = error as NSError
                     // Ignore cancellation (216) and "no speech detected" (1110)
                     if nsErr.code == 216 || nsErr.code == 1110 { return }
-                    // In server mode, a timeout/end error triggers restart
-                    if !self.isOnDevice {
-                        self.restartServerRecognition()
+
+                    if self.isOnDevice {
+                        // On-device failed (e.g. Siri disabled) — retry in server mode
+                        print("[SpeechTranscriber] On-device failed: \(error.localizedDescription). Falling back to server mode.")
+                        self.isOnDevice = false
+                        self.recognitionTask = nil
+                        self.request = nil
+                        self.beginRecognition()
                         return
                     }
-                    self.onError?("Transcription error: \(error.localizedDescription)")
+
+                    // In server mode, a timeout/end error triggers restart
+                    self.restartServerRecognition()
                 }
             }
         }
