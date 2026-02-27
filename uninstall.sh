@@ -32,13 +32,13 @@ else
     skip "~/.config/livescribe not found"
 fi
 
-# ── Python venv ───────────────────────────────────────────────────────────────
-VENV="$REPO_DIR/LiveScribe/PythonServer/venv"
-if [ -d "$VENV" ]; then
-    rm -rf "$VENV"
-    ok "Removed Python venv"
+# ── Python server + venv (Application Support) ───────────────────────────────
+SUPPORT_DIR="$HOME/Library/Application Support/LiveScribe"
+if [ -d "$SUPPORT_DIR" ]; then
+    rm -rf "$SUPPORT_DIR"
+    ok "Removed ~/Library/Application Support/LiveScribe"
 else
-    skip "Python venv not found"
+    skip "~/Library/Application Support/LiveScribe not found"
 fi
 
 # ── Transcripts ───────────────────────────────────────────────────────────────

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # LiveScribe — Setup Script
 #
-# Sets up the Python environment, writes a config file so the app can find
-# the server when launched from /Applications, patches the Xcode scheme for
-# dev use, then builds and installs LiveScribe.app.
+# Installs the Python server to ~/Library/Application Support/LiveScribe/
+# (stable, independent of the repo location), writes a config file, and
+# builds + installs LiveScribe.app to /Applications.
 #
 # Usage: bash install.sh
 
@@ -20,8 +20,13 @@ step() { echo -e "\n${BOLD}[$1/5] $2${NC}"; }
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-PYTHON_SERVER="$REPO_DIR/LiveScribe/PythonServer"
-VENV="$PYTHON_SERVER/venv"
+REPO_SERVER="$REPO_DIR/LiveScribe/PythonServer"
+
+# Stable install location — survives repo deletion or moves
+SUPPORT_DIR="$HOME/Library/Application Support/LiveScribe"
+SERVER_DIR="$SUPPORT_DIR/PythonServer"
+VENV="$SUPPORT_DIR/venv"
+
 CONFIG_DIR="$HOME/.config/livescribe"
 CONFIG_FILE="$CONFIG_DIR/config"
 SCHEME="$REPO_DIR/LiveScribe/MacApp/LiveScribe.xcodeproj/xcshareddata/xcschemes/LiveScribe.xcscheme"
@@ -45,13 +50,11 @@ step 1 "Checking Xcode"
 xcode-select -p &>/dev/null \
     || die "Xcode not found.\n  Install it from the App Store: https://apps.apple.com/app/xcode/id497799835"
 
-# Accept the licence silently if it hasn't been accepted yet
 xcodebuild -version &>/dev/null 2>&1 || {
     warn "Xcode licence not yet accepted — accepting now (requires sudo)."
     sudo xcodebuild -license accept
 }
 
-# Ensure first-launch system frameworks are initialised (idempotent, fast if already done)
 xcodebuild -runFirstLaunch 2>/dev/null || true
 
 ok "$(xcodebuild -version 2>/dev/null | head -1)"
@@ -62,7 +65,6 @@ step 2 "Checking Python"
 PYTHON_BIN=""
 for cmd in python3.13 python3.12 python3.11 python3; do
     if command -v "$cmd" &>/dev/null; then
-        # Use || continue so pyenv shim errors or version mismatches skip to the next candidate
         ver=$("$cmd" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null) || continue
         maj="${ver%%.*}"; min="${ver##*.}"
         if [ "$maj" -ge 3 ] && [ "$min" -ge 11 ]; then
@@ -76,8 +78,13 @@ done
 [ -n "$PYTHON_BIN" ] \
     || die "Python 3.11+ not found.\n  Install via Homebrew: brew install python@3.11"
 
-# ── 3. Python venv ────────────────────────────────────────────────────────────
-step 3 "Setting up Python environment"
+# ── 3. Install Python server to Application Support ───────────────────────────
+step 3 "Installing Python server"
+
+mkdir -p "$SERVER_DIR"
+cp "$REPO_SERVER"/*.py "$SERVER_DIR/"
+cp "$REPO_SERVER/requirements.txt" "$SERVER_DIR/"
+ok "Server files copied to $SERVER_DIR"
 
 if [ ! -d "$VENV" ]; then
     echo "  Creating virtual environment..."
@@ -86,27 +93,27 @@ fi
 
 echo "  Installing dependencies..."
 "$VENV/bin/pip" install --quiet --upgrade pip
-"$VENV/bin/pip" install --quiet -r "$PYTHON_SERVER/requirements.txt"
-ok "Environment ready at $VENV"
+"$VENV/bin/pip" install --quiet -r "$SERVER_DIR/requirements.txt"
+ok "Python environment ready at $VENV"
 
-# ── 4. Write config + patch scheme ────────────────────────────────────────────
+# ── 4. Write config + patch Xcode scheme ──────────────────────────────────────
 step 4 "Writing config"
 
 mkdir -p "$CONFIG_DIR"
 cat > "$CONFIG_FILE" <<EOF
 LIVESCRIBE_PYTHON_BIN=$VENV/bin/python3
-LIVESCRIBE_SERVER_SCRIPT=$PYTHON_SERVER/server.py
+LIVESCRIBE_SERVER_SCRIPT=$SERVER_DIR/server.py
 EOF
 ok "Config written to $CONFIG_FILE"
 
-# Also patch the Xcode scheme so dev runs (⌘R) work without manual editing
+# Patch the Xcode scheme to the same stable paths (works for both dev and release)
 sed -i '' \
-    "s|value = \"[^\"]*LiveScribe/PythonServer/venv/bin/python3\"|value = \"$VENV/bin/python3\"|g" \
+    "s|value = \"[^\"]*PythonServer/venv/bin/python3\"|value = \"$VENV/bin/python3\"|g" \
     "$SCHEME"
 sed -i '' \
-    "s|value = \"[^\"]*LiveScribe/PythonServer/server.py\"|value = \"$PYTHON_SERVER/server.py\"|g" \
+    "s|value = \"[^\"]*PythonServer/server.py\"|value = \"$SERVER_DIR/server.py\"|g" \
     "$SCHEME"
-ok "Xcode scheme patched for local paths"
+ok "Xcode scheme patched"
 
 # ── 5. Build + install ────────────────────────────────────────────────────────
 step 5 "Building LiveScribe (this takes a minute or two)"
@@ -135,7 +142,7 @@ else
     tail -20 "$BUILD_LOG" | sed 's/^/    /'
     echo ""
     if grep -q "runFirstLaunch" "$BUILD_LOG" 2>/dev/null; then
-        warn "Xcode plugin failed to load. Run the following and then re-run install.sh:"
+        warn "Xcode plugin failed to load. Run the following then re-run install.sh:"
         echo ""
         echo "    sudo xcodebuild -runFirstLaunch"
     else
