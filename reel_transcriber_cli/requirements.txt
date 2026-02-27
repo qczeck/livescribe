@@ -1,0 +1,11 @@
+# Instagram Reel Transcriber — dependencies
+
+# Downloader
+yt-dlp>=2024.1.0
+
+# Transcription: CPU / NVIDIA GPU
+faster-whisper>=1.0.0
+
+# Transcription: Apple Silicon (MPS)
+# Only install this on M-series Macs — it conflicts with faster-whisper on other platforms
+mlx-whisper

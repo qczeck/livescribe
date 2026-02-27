@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env
+*.log
+
+# Xcode / Swift
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+.build/
+*.o
+*.d
+
+# Build output
+build/
+dist/
+
+# Output artifacts
+transcript.txt
+~/Documents/LiveScribe/
+
+# MLX / HuggingFace model cache (large binary files)
+.cache/
