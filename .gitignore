@@ -31,5 +31,8 @@ dist/
 transcript.txt
 ~/Documents/LiveScribe/
 
+# Legacy CLI tool — kept locally, not part of this repo
+reel_transcriber_cli/
+
 # MLX / HuggingFace model cache (large binary files)
 .cache/
