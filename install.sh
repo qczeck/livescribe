@@ -44,6 +44,9 @@ xcodebuild -version &>/dev/null 2>&1 || {
     sudo xcodebuild -license accept
 }
 
+# Ensure first-launch system frameworks are initialised (idempotent, fast if already done)
+xcodebuild -runFirstLaunch 2>/dev/null || true
+
 ok "$(xcodebuild -version 2>/dev/null | head -1)"
 
 # ── 2. Python 3.11+ ───────────────────────────────────────────────────────────
@@ -52,7 +55,8 @@ step 2 "Checking Python"
 PYTHON_BIN=""
 for cmd in python3.13 python3.12 python3.11 python3; do
     if command -v "$cmd" &>/dev/null; then
-        ver=$("$cmd" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        # Use || continue so pyenv shim errors or version mismatches skip to the next candidate
+        ver=$("$cmd" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null) || continue
         maj="${ver%%.*}"; min="${ver##*.}"
         if [ "$maj" -ge 3 ] && [ "$min" -ge 11 ]; then
             PYTHON_BIN="$(command -v "$cmd")"
@@ -120,14 +124,20 @@ if xcodebuild \
         warn "Check $BUILD_LOG for details."
     fi
 else
-    warn "xcodebuild failed — likely a code signing issue."
-    warn "Fix: open LiveScribe/MacApp/LiveScribe.xcodeproj in Xcode,"
-    warn "     go to Signing & Capabilities, set your Team, then hit ⌘R."
-    echo ""
     echo "  Last 20 lines of build log:"
     tail -20 "$BUILD_LOG" | sed 's/^/    /'
     echo ""
-    warn "Python environment and config are set up — only the build step failed."
+    if grep -q "runFirstLaunch" "$BUILD_LOG" 2>/dev/null; then
+        warn "Xcode plugin failed to load. Run the following and then re-run install.sh:"
+        echo ""
+        echo "    sudo xcodebuild -runFirstLaunch"
+    else
+        warn "xcodebuild failed — likely a code signing issue."
+        warn "Fix: open LiveScribe/MacApp/LiveScribe.xcodeproj in Xcode,"
+        warn "     go to Signing & Capabilities, set your Team, then hit ⌘R."
+    fi
+    echo ""
+    warn "Python environment and config are already set up — only the build step failed."
     exit 1
 fi
 
