@@ -21,35 +21,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Config
+
+    /// Reads ~/.config/livescribe/config (KEY=VALUE pairs, one per line).
+    /// Written by install.sh so the app works when launched outside Xcode.
+    private func loadConfig() -> [String: String] {
+        let configURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/livescribe/config")
+        guard let contents = try? String(contentsOf: configURL, encoding: .utf8) else { return [:] }
+        var result: [String: String] = [:]
+        for line in contents.components(separatedBy: "\n") {
+            let parts = line.split(separator: "=", maxSplits: 1).map(String.init)
+            if parts.count == 2 { result[parts[0]] = parts[1] }
+        }
+        return result
+    }
+
     // MARK: - Python subprocess
 
     private func launchPythonServer() {
         let process = Process()
+        let config = loadConfig()
 
-        // Resolve the Python binary and server script paths.
-        // In development: override with environment variables.
-        // In release: look inside the app bundle.
+        // Resolve paths with a three-level fallback:
+        //   1. Xcode scheme env vars   (development)
+        //   2. ~/.config/livescribe/config  (install.sh / production)
+        //   3. App bundle Resources    (future bundled distribution)
         let pythonBin: String
         let serverScript: String
 
-        if let envPython = ProcessInfo.processInfo.environment["LIVESCRIBE_PYTHON_BIN"] {
-            pythonBin = envPython
-        } else if let bundlePath = Bundle.main.path(forResource: "python3", ofType: nil,
-                                                      inDirectory: "PythonServer/venv/bin") {
-            pythonBin = bundlePath
+        if let v = ProcessInfo.processInfo.environment["LIVESCRIBE_PYTHON_BIN"] {
+            pythonBin = v
+        } else if let v = config["LIVESCRIBE_PYTHON_BIN"] {
+            pythonBin = v
+        } else if let v = Bundle.main.path(forResource: "python3", ofType: nil,
+                                           inDirectory: "PythonServer/venv/bin") {
+            pythonBin = v
         } else {
-            // Last resort: system python3
             pythonBin = "/usr/bin/env"
         }
 
-        if let envScript = ProcessInfo.processInfo.environment["LIVESCRIBE_SERVER_SCRIPT"] {
-            serverScript = envScript
-        } else if let bundlePath = Bundle.main.path(forResource: "server", ofType: "py",
-                                                     inDirectory: "PythonServer") {
-            serverScript = bundlePath
+        if let v = ProcessInfo.processInfo.environment["LIVESCRIBE_SERVER_SCRIPT"] {
+            serverScript = v
+        } else if let v = config["LIVESCRIBE_SERVER_SCRIPT"] {
+            serverScript = v
+        } else if let v = Bundle.main.path(forResource: "server", ofType: "py",
+                                           inDirectory: "PythonServer") {
+            serverScript = v
         } else {
             print("[AppDelegate] Cannot locate server.py — transcription unavailable.")
-            statusBarController?.transitionTo(.error("Python server not found.\nSet LIVESCRIBE_SERVER_SCRIPT env var."))
+            statusBarController?.transitionTo(.error("Python server not found.\nRun install.sh to configure."))
             return
         }
 

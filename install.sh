@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# LiveScribe — Setup Script
+#
+# Sets up the Python environment, writes a config file so the app can find
+# the server when launched from /Applications, patches the Xcode scheme for
+# dev use, then builds and installs LiveScribe.app.
+#
+# Usage: bash install.sh
+
+set -euo pipefail
+
+# ── Colours ───────────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BOLD='\033[1m'; NC='\033[0m'
+
+ok()   { echo -e "  ${GREEN}✓${NC} $*"; }
+warn() { echo -e "  ${YELLOW}⚠${NC} $*"; }
+die()  { echo -e "\n${RED}✗ $*${NC}" >&2; exit 1; }
+step() { echo -e "\n${BOLD}[$1/5] $2${NC}"; }
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+PYTHON_SERVER="$REPO_DIR/LiveScribe/PythonServer"
+VENV="$PYTHON_SERVER/venv"
+CONFIG_DIR="$HOME/.config/livescribe"
+CONFIG_FILE="$CONFIG_DIR/config"
+SCHEME="$REPO_DIR/LiveScribe/MacApp/LiveScribe.xcodeproj/xcshareddata/xcschemes/LiveScribe.xcscheme"
+PROJECT="$REPO_DIR/LiveScribe/MacApp/LiveScribe.xcodeproj"
+BUILD_LOG="/tmp/livescribe-build.log"
+APP_DEST="/Applications/LiveScribe.app"
+
+echo -e "\n${BOLD}LiveScribe — Setup${NC}"
+echo    "══════════════════"
+
+# ── 1. Xcode ──────────────────────────────────────────────────────────────────
+step 1 "Checking Xcode"
+
+xcode-select -p &>/dev/null \
+    || die "Xcode not found.\n  Install it from the App Store: https://apps.apple.com/app/xcode/id497799835"
+
+# Accept the licence silently if it hasn't been accepted yet
+xcodebuild -version &>/dev/null 2>&1 || {
+    warn "Xcode licence not yet accepted — accepting now (requires sudo)."
+    sudo xcodebuild -license accept
+}
+
+ok "$(xcodebuild -version 2>/dev/null | head -1)"
+
+# ── 2. Python 3.11+ ───────────────────────────────────────────────────────────
+step 2 "Checking Python"
+
+PYTHON_BIN=""
+for cmd in python3.13 python3.12 python3.11 python3; do
+    if command -v "$cmd" &>/dev/null; then
+        ver=$("$cmd" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        maj="${ver%%.*}"; min="${ver##*.}"
+        if [ "$maj" -ge 3 ] && [ "$min" -ge 11 ]; then
+            PYTHON_BIN="$(command -v "$cmd")"
+            ok "Python $ver at $PYTHON_BIN"
+            break
+        fi
+    fi
+done
+
+[ -n "$PYTHON_BIN" ] \
+    || die "Python 3.11+ not found.\n  Install via Homebrew: brew install python@3.11"
+
+# ── 3. Python venv ────────────────────────────────────────────────────────────
+step 3 "Setting up Python environment"
+
+if [ ! -d "$VENV" ]; then
+    echo "  Creating virtual environment..."
+    "$PYTHON_BIN" -m venv "$VENV"
+fi
+
+echo "  Installing dependencies..."
+"$VENV/bin/pip" install --quiet --upgrade pip
+"$VENV/bin/pip" install --quiet -r "$PYTHON_SERVER/requirements.txt"
+ok "Environment ready at $VENV"
+
+# ── 4. Write config + patch scheme ────────────────────────────────────────────
+step 4 "Writing config"
+
+mkdir -p "$CONFIG_DIR"
+cat > "$CONFIG_FILE" <<EOF
+LIVESCRIBE_PYTHON_BIN=$VENV/bin/python3
+LIVESCRIBE_SERVER_SCRIPT=$PYTHON_SERVER/server.py
+EOF
+ok "Config written to $CONFIG_FILE"
+
+# Also patch the Xcode scheme so dev runs (⌘R) work without manual editing
+sed -i '' \
+    "s|value = \"[^\"]*LiveScribe/PythonServer/venv/bin/python3\"|value = \"$VENV/bin/python3\"|g" \
+    "$SCHEME"
+sed -i '' \
+    "s|value = \"[^\"]*LiveScribe/PythonServer/server.py\"|value = \"$PYTHON_SERVER/server.py\"|g" \
+    "$SCHEME"
+ok "Xcode scheme patched for local paths"
+
+# ── 5. Build + install ────────────────────────────────────────────────────────
+step 5 "Building LiveScribe (this takes a minute or two)"
+
+BUILD_DIR="$(mktemp -d)"
+trap 'rm -rf "$BUILD_DIR"' EXIT
+
+if xcodebuild \
+    -project "$PROJECT" \
+    -scheme LiveScribe \
+    -configuration Release \
+    -derivedDataPath "$BUILD_DIR" \
+    build > "$BUILD_LOG" 2>&1; then
+
+    APP_SRC="$BUILD_DIR/Build/Products/Release/LiveScribe.app"
+    if [ -d "$APP_SRC" ]; then
+        [ -d "$APP_DEST" ] && rm -rf "$APP_DEST"
+        cp -r "$APP_SRC" "$APP_DEST"
+        ok "Installed to $APP_DEST"
+    else
+        warn "Build succeeded but .app not found at expected path."
+        warn "Check $BUILD_LOG for details."
+    fi
+else
+    warn "xcodebuild failed — likely a code signing issue."
+    warn "Fix: open LiveScribe/MacApp/LiveScribe.xcodeproj in Xcode,"
+    warn "     go to Signing & Capabilities, set your Team, then hit ⌘R."
+    echo ""
+    echo "  Last 20 lines of build log:"
+    tail -20 "$BUILD_LOG" | sed 's/^/    /'
+    echo ""
+    warn "Python environment and config are set up — only the build step failed."
+    exit 1
+fi
+
+# ── Done ──────────────────────────────────────────────────────────────────────
+echo -e "\n${BOLD}${GREEN}All done!${NC}\n"
+echo "  LiveScribe is in /Applications."
+echo "  On first launch, macOS may block it — right-click → Open to bypass Gatekeeper."
+echo ""
+warn "First transcription downloads Whisper model weights (~500 MB). Cached after that."
+echo ""

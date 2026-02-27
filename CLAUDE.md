@@ -10,14 +10,15 @@ The old `reel_transcriber.py` CLI (Instagram reel download + transcribe) lives a
 
 ## Current Status
 
-**All code written, compiles, integration tested. Not yet run live.**
+**Working end-to-end. Live transcription confirmed.**
 
 - ✅ Python server + transcriber written and tested
 - ✅ WebSocket protocol verified end-to-end (`test_client.py` → server → transcript returned)
 - ✅ Swift app written (all 6 source files)
 - ✅ Xcode project builds clean (`BUILD SUCCEEDED`, zero errors/warnings)
 - ✅ Dev env vars baked into Xcode scheme via `project.yml`
-- ⬜ First live run — open in Xcode, grant Screen Recording permission, test with real audio
+- ✅ Live transcription confirmed working (ScreenCaptureKit → mlx-whisper → popover)
+- ✅ `install.sh` — one-command setup: venv + config + xcodebuild + /Applications install
 
 ---
 
@@ -66,9 +67,9 @@ Two-process model: Swift app + Python subprocess.
 ```
 reel_transcriber/
 ├── CLAUDE.md
+├── README.md
 ├── .gitignore
-├── reel_transcriber.py          # Old CLI (keep as-is)
-├── requirements.txt             # Old CLI deps
+├── install.sh                   # One-command setup + install script
 └── LiveScribe/
     ├── MacApp/                  # Xcode project
     │   ├── LiveScribe.xcodeproj
@@ -180,12 +181,11 @@ IDLE ──(click)──► STARTING ──(READY on stdout)──► IDLE (read
 
 ## Python Server Startup
 
-AppDelegate launches `server.py` as a subprocess on app start. It reads two env vars (set in the Xcode scheme for development, bundled paths for release):
+AppDelegate launches `server.py` as a subprocess on app start. It resolves the Python binary and server script using a three-level fallback:
 
-| Env var | Purpose |
-|---|---|
-| `LIVESCRIBE_SERVER_SCRIPT` | Absolute path to `server.py` |
-| `LIVESCRIBE_PYTHON_BIN` | Absolute path to venv `python3` binary |
+1. **Xcode scheme env vars** — `LIVESCRIBE_PYTHON_BIN` / `LIVESCRIBE_SERVER_SCRIPT` (development, set via `project.yml`)
+2. **`~/.config/livescribe/config`** — written by `install.sh` (KEY=VALUE pairs), used when running from `/Applications`
+3. **App bundle Resources** — for future bundled distribution where the venv is embedded inside the `.app`
 
 The server prints `READY` to stdout when the WebSocket is up and the model is loaded. AppDelegate's stdout pipe handler detects this and calls `statusBarController.pythonServerIsReady()`.
 
@@ -230,33 +230,37 @@ pip install -r requirements.txt
 
 ## Development Workflow
 
-The Xcode scheme already has `LIVESCRIBE_SERVER_SCRIPT` and `LIVESCRIBE_PYTHON_BIN` set (via `project.yml` → regenerated into the scheme). So the full workflow is:
+### Fresh clone (for others)
+```bash
+bash install.sh
+```
+Sets up the venv, writes `~/.config/livescribe/config`, patches the Xcode scheme, builds, and installs to `/Applications`.
 
+### Day-to-day dev (Xcode)
+The scheme has `LIVESCRIBE_SERVER_SCRIPT` and `LIVESCRIBE_PYTHON_BIN` patched by `install.sh`, so:
 1. Open `LiveScribe/MacApp/LiveScribe.xcodeproj` in Xcode
-2. Hit ⌘R — the app launches, AppDelegate starts the Python server automatically
-3. Grant Screen Recording permission when the dialog appears (first run only)
-4. Click the waveform icon in the menu bar
-5. Play some audio — transcript should appear in the popover
-6. Click "Stop & Save" — file written to `~/Documents/LiveScribe/`
+2. Hit ⌘R — Python server launches automatically
+3. Grant Screen Recording on first run
+4. Click the waveform icon, play audio, verify transcript
 
-To run the integration test independently:
+### Integration test
 ```bash
 cd LiveScribe/PythonServer
 source venv/bin/activate
 python test_client.py   # server must already be running on port 8765
 ```
 
-To regenerate the Xcode project after editing `project.yml`:
+### Regenerate Xcode project
 ```bash
 cd LiveScribe/MacApp
 xcodegen generate
+# Re-run install.sh afterwards to re-patch the scheme paths
 ```
 
 ---
 
 ## Next Steps
 
-- First live run: open in Xcode, hit ⌘R, test with real audio
-- Observe latency and transcript quality with `whisper-small`; tune chunk size / model if needed
-- Polish: icon pulse animation during listening, popover min-height, edge cases
-- Robustness: Python server crash recovery, port-in-use retry, audio permission denied UI
+- Polish: icon pulse animation during listening, popover min-height
+- Reduce transcript word repetition further (reduce overlap to 0 or add suffix deduplication)
+- Option 2: bundle Python + venv inside the .app for proper /Applications distribution without install.sh

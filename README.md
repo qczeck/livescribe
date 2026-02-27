@@ -51,45 +51,49 @@ Two-process architecture: a Swift app handles the UI and audio capture, a Python
 
 ## Setup
 
-### 1. Python server
-
 ```bash
-cd LiveScribe/PythonServer
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+git clone git@github.com:qczeck/livescribe.git
+cd livescribe
+bash install.sh
 ```
 
-On Apple Silicon, `mlx-whisper` is used. On Intel, `faster-whisper` is used. Both are in `requirements.txt`.
+That's it. The script:
+1. Checks Xcode and Python 3.11+ are installed
+2. Creates a Python venv and installs dependencies
+3. Writes `~/.config/livescribe/config` so the app finds the server when launched from `/Applications`
+4. Builds `LiveScribe.app` with `xcodebuild` and copies it to `/Applications`
 
-> **First run**: the Whisper model weights (~500 MB for `small`) are downloaded from HuggingFace and cached locally. Subsequent launches are instant.
+> **First transcription**: Whisper model weights (~500 MB for `small`) are downloaded from HuggingFace and cached. Subsequent launches are instant.
 
-### 2. Xcode project
+### Prerequisites
 
-```bash
-cd LiveScribe/MacApp
+- **Xcode 15+** — install from the App Store, then open it once to accept the licence
+- **Python 3.11+** — `brew install python@3.11` if needed
 
-# Optional: regenerate project from spec (requires xcodegen)
-# xcodegen generate
-
-open LiveScribe.xcodeproj
-```
-
-The Xcode scheme already has `LIVESCRIBE_SERVER_SCRIPT` and `LIVESCRIBE_PYTHON_BIN` set to point at the venv — hit ⌘R and it just works.
-
-### 3. Screen Recording permission
+### Screen Recording permission
 
 On first launch, macOS will prompt for Screen Recording access. Grant it, then click the menu bar icon. If the dialog doesn't appear, go to **System Settings → Privacy & Security → Screen Recording** and enable LiveScribe manually.
+
+### If the build step fails
+
+`xcodebuild` may fail if no code signing identity is configured. In that case:
+
+1. Open `LiveScribe/MacApp/LiveScribe.xcodeproj` in Xcode
+2. Go to the **LiveScribe** target → **Signing & Capabilities**
+3. Set your Team
+4. Hit **⌘R** — the app runs directly from Xcode
+
+The `install.sh` script still sets up the Python environment and config file, so ⌘R works without any further manual steps.
 
 ---
 
 ## Running
 
-1. Open `LiveScribe/MacApp/LiveScribe.xcodeproj` in Xcode
-2. Hit **⌘R** — the Python server launches automatically as a subprocess
-3. Click the **waveform** icon in the menu bar
-4. Play audio on your Mac — transcript appears in the popover
-5. Click **Stop & Save** — file written to `~/Documents/LiveScribe/`
+Once installed, launch **LiveScribe** from `/Applications` like any other app.
+
+1. Click the **waveform** icon in the menu bar
+2. Play audio on your Mac — transcript appears in the popover in real time
+3. Click **Stop & Save** — file written to `~/Documents/LiveScribe/`
 
 The app lives in the menu bar only (no Dock icon). Click outside the popover to dismiss it without stopping.
 
