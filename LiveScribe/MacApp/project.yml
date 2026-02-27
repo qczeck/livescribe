@@ -31,6 +31,7 @@ targets:
         NSHighResolutionCapable: YES
         NSPrincipalClass: NSApplication
         NSScreenCaptureUsageDescription: "LiveScribe needs Screen Recording access to capture audio playing on your Mac."
+        NSSpeechRecognitionUsageDescription: "LiveScribe uses Speech Recognition to transcribe audio playing on your Mac."
         LSMinimumSystemVersion: "13.0"
 
     entitlements:
@@ -44,7 +45,3 @@ targets:
         INFOPLIST_FILE: LiveScribe/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: LiveScribe/Resources/LiveScribe.entitlements
 
-    scheme:
-      environmentVariables:
-        LIVESCRIBE_SERVER_SCRIPT: /Users/Maciek/reel_transcriber/LiveScribe/PythonServer/server.py
-        LIVESCRIBE_PYTHON_BIN: /Users/Maciek/reel_transcriber/LiveScribe/PythonServer/venv/bin/python3

@@ -49,7 +49,6 @@ struct PopoverView: View {
     private var dotColor: Color {
         switch state {
         case .idle:      return .secondary
-        case .starting:  return .orange
         case .listening: return .red
         case .saving:    return .orange
         case .saved:     return .green
@@ -60,7 +59,6 @@ struct PopoverView: View {
     private var statusLabel: String {
         switch state {
         case .idle:          return "Ready"
-        case .starting:      return "Starting…"
         case .listening:     return "Listening"
         case .saving:        return "Saving…"
         case .saved:         return "Saved"
@@ -78,15 +76,6 @@ struct PopoverView: View {
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
                 .frame(minHeight: 80, alignment: .topLeading)
-
-        case .starting:
-            HStack {
-                ProgressView().scaleEffect(0.8)
-                Text("Loading model…")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-            }
-            .frame(minHeight: 80, alignment: .center)
 
         case .listening:
             ScrollViewReader { proxy in
@@ -147,6 +136,15 @@ struct PopoverView: View {
                     .buttonStyle(.link)
                     .font(.system(size: 12))
                 }
+                if message.contains("Speech Recognition") {
+                    Button("Open Privacy Settings") {
+                        NSWorkspace.shared.open(
+                            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition")!
+                        )
+                    }
+                    .buttonStyle(.link)
+                    .font(.system(size: 12))
+                }
             }
             .frame(minHeight: 80, alignment: .topLeading)
         }
@@ -192,7 +190,7 @@ final class PopoverHostingController: NSHostingController<PopoverView> {
 
     init() {
         super.init(rootView: PopoverView(
-            state: .starting,
+            state: .idle,
             transcript: "",
             onStopAndSave: {},
             onRetry: {}

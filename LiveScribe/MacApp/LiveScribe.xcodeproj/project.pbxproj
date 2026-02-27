@@ -9,19 +9,21 @@
 /* Begin PBXBuildFile section */
 		41ABA409601E206BF4849CFD /* LiveScribeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C80BDC794B357DC665E7D3 /* LiveScribeApp.swift */; };
 		4302592E9D9848AB1E027BD1 /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFC3E0F49E91ED242F795E7 /* PopoverView.swift */; };
+		7C4D2B0B0F33322DE8AAC810 /* SpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 939DA9E4A026814CA8D854C7 /* SpeechTranscriber.swift */; };
 		949B58253F2F0D55A5656708 /* AudioCaptureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE396975B149AD472E254CA /* AudioCaptureManager.swift */; };
 		AB570593A0CBAAB1352FCC22 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 388DDC0B92407939C82B80AA /* StatusBarController.swift */; };
-		BFE676C0057AEA4163C238CC /* TranscriptionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F3815A8703FE1262A6FF54 /* TranscriptionClient.swift */; };
+		C7C3A86C86757FE562765BD6 /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16794984B998A1761C2321E0 /* TranscriptionEngine.swift */; };
 		EDB83C72BE23C84041AFD0EA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50AA50E47363926AE14E9D34 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		13C80BDC794B357DC665E7D3 /* LiveScribeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveScribeApp.swift; sourceTree = "<group>"; };
+		16794984B998A1761C2321E0 /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		388DDC0B92407939C82B80AA /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
-		46F3815A8703FE1262A6FF54 /* TranscriptionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionClient.swift; sourceTree = "<group>"; };
 		4DE396975B149AD472E254CA /* AudioCaptureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureManager.swift; sourceTree = "<group>"; };
 		4FFC3E0F49E91ED242F795E7 /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
 		50AA50E47363926AE14E9D34 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		939DA9E4A026814CA8D854C7 /* SpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscriber.swift; sourceTree = "<group>"; };
 		E855BF6F7A3BC94C29D49A66 /* LiveScribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveScribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -65,18 +67,19 @@
 				13C80BDC794B357DC665E7D3 /* LiveScribeApp.swift */,
 				388DDC0B92407939C82B80AA /* StatusBarController.swift */,
 				85FDCAF5F55A6EE95BDA281D /* Audio */,
-				E60FC5A12C116E464E8BB403 /* IPC */,
+				DA73773B9776E8701D89ED02 /* Transcription */,
 				78B711ADC213625EF7C899E4 /* Views */,
 			);
 			path = LiveScribe;
 			sourceTree = "<group>";
 		};
-		E60FC5A12C116E464E8BB403 /* IPC */ = {
+		DA73773B9776E8701D89ED02 /* Transcription */ = {
 			isa = PBXGroup;
 			children = (
-				46F3815A8703FE1262A6FF54 /* TranscriptionClient.swift */,
+				939DA9E4A026814CA8D854C7 /* SpeechTranscriber.swift */,
+				16794984B998A1761C2321E0 /* TranscriptionEngine.swift */,
 			);
-			path = IPC;
+			path = Transcription;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -141,8 +144,9 @@
 				949B58253F2F0D55A5656708 /* AudioCaptureManager.swift in Sources */,
 				41ABA409601E206BF4849CFD /* LiveScribeApp.swift in Sources */,
 				4302592E9D9848AB1E027BD1 /* PopoverView.swift in Sources */,
+				7C4D2B0B0F33322DE8AAC810 /* SpeechTranscriber.swift in Sources */,
 				AB570593A0CBAAB1352FCC22 /* StatusBarController.swift in Sources */,
-				BFE676C0057AEA4163C238CC /* TranscriptionClient.swift in Sources */,
+				C7C3A86C86757FE562765BD6 /* TranscriptionEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

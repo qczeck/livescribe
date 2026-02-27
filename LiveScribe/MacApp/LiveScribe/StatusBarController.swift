@@ -5,7 +5,6 @@ import Combine
 
 enum AppState: Equatable {
     case idle
-    case starting          // Python not ready yet
     case listening         // capturing + transcribing
     case saving
     case saved(String)     // associated value = file path
@@ -13,7 +12,7 @@ enum AppState: Equatable {
 
     static func == (lhs: AppState, rhs: AppState) -> Bool {
         switch (lhs, rhs) {
-        case (.idle, .idle), (.starting, .starting),
+        case (.idle, .idle),
              (.listening, .listening), (.saving, .saving):
             return true
         case (.saved(let a), .saved(let b)): return a == b
@@ -33,10 +32,10 @@ final class StatusBarController: NSObject {
     private var popoverVC: PopoverHostingController!
     private var eventMonitor: EventMonitor?
 
-    private var transcriptionClient: TranscriptionClient?
+    private var transcriptionEngine: TranscriptionEngine?
     private var audioCaptureManager: AudioCaptureManager?
 
-    private(set) var state: AppState = .starting {
+    private(set) var state: AppState = .idle {
         didSet { applyState() }
     }
 
@@ -75,12 +74,6 @@ final class StatusBarController: NSObject {
 
     func transitionTo(_ newState: AppState) {
         state = newState
-    }
-
-    /// Called by AppDelegate when the Python process prints READY
-    func pythonServerIsReady() {
-        guard state == .starting else { return }
-        state = .idle
     }
 
     private func applyState() {
@@ -136,26 +129,27 @@ final class StatusBarController: NSObject {
         sessionTranscript = ""
         state = .listening
 
-        // Set up transcription client
-        transcriptionClient = TranscriptionClient()
-        transcriptionClient?.onTranscript = { [weak self] text in
-            DispatchQueue.main.async {
-                guard let self, self.state == .listening else { return }
-                self.sessionTranscript += (self.sessionTranscript.isEmpty ? "" : " ") + text
-                self.popoverVC.update(state: self.state, transcript: self.sessionTranscript)
+        // Set up transcription engine
+        let engine = SpeechTranscriber()
+        transcriptionEngine = engine
+        engine.onTranscript = { [weak self] text in
+            guard let self, self.state == .listening else { return }
+            self.sessionTranscript = text
+            // Snapshot for server-mode restart boundaries
+            if let speechEngine = self.transcriptionEngine as? SpeechTranscriber {
+                speechEngine.snapshotAccumulatedTranscript(text)
             }
+            self.popoverVC.update(state: self.state, transcript: self.sessionTranscript)
         }
-        transcriptionClient?.onError = { [weak self] message in
-            DispatchQueue.main.async {
-                self?.state = .error(message)
-            }
+        engine.onError = { [weak self] message in
+            self?.state = .error(message)
         }
-        transcriptionClient?.connect()
+        engine.start()
 
         // Set up audio capture
         audioCaptureManager = AudioCaptureManager()
-        audioCaptureManager?.onAudioChunk = { [weak self] data in
-            self?.transcriptionClient?.sendAudio(data)
+        audioCaptureManager?.onAudioBuffer = { [weak self] buffer in
+            self?.transcriptionEngine?.feedAudio(buffer)
         }
         audioCaptureManager?.onError = { [weak self] message in
             DispatchQueue.main.async { self?.state = .error(message) }
@@ -165,9 +159,9 @@ final class StatusBarController: NSObject {
 
     private func stopAndSave() {
         audioCaptureManager?.stopCapture()
-        transcriptionClient?.disconnect()
+        transcriptionEngine?.stop()
         audioCaptureManager = nil
-        transcriptionClient = nil
+        transcriptionEngine = nil
 
         state = .saving
         saveTranscript()
@@ -211,9 +205,6 @@ final class StatusBarController: NSObject {
         case .idle:
             name = "waveform"
             tint = nil
-        case .starting:
-            name = "ellipsis.circle"
-            tint = .secondaryLabelColor
         case .listening:
             name = "waveform.badge.mic"
             tint = .systemRed

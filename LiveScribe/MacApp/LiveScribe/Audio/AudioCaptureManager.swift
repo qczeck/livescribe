@@ -6,18 +6,16 @@ import CoreMedia
 
 private let kTargetSampleRate: Double = 16_000
 private let kSourceSampleRate: Double = 48_000
-private let kChunkDuration:    Double = 3.0
-private let kChunkSamples = Int(kTargetSampleRate * kChunkDuration)  // 48 000
 
 // MARK: - Manager
 
 /// Captures system audio via ScreenCaptureKit and delivers 16 kHz mono float32
-/// chunks to the `onAudioChunk` callback for forwarding to the Python server.
+/// `AVAudioPCMBuffer`s to the `onAudioBuffer` callback for the transcription engine.
 @MainActor
 final class AudioCaptureManager: NSObject {
 
-    /// Called with little-endian float32 audio chunk data.
-    var onAudioChunk: ((Data) -> Void)?
+    /// Called with each resampled 16 kHz mono float32 buffer.
+    var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
 
     /// Called when capture fails (e.g. permission denied). Message is user-facing.
     var onError: ((String) -> Void)?
@@ -32,8 +30,6 @@ final class AudioCaptureManager: NSObject {
         interleaved: false
     )!
 
-    private var sampleAccumulator: [Float] = []
-
     // MARK: - Start / Stop
 
     func startCapture() {
@@ -45,7 +41,6 @@ final class AudioCaptureManager: NSObject {
             try? await stream?.stopCapture()
             stream = nil
             converter = nil
-            sampleAccumulator = []
         }
     }
 
@@ -199,15 +194,8 @@ final class AudioCaptureManager: NSObject {
         }
         if let err = convError { print("[AudioCaptureManager] Converter error: \(err)"); return }
 
-        let outLen = Int(outPCM.frameLength)
-        if let ptr = outPCM.floatChannelData?[0], outLen > 0 {
-            sampleAccumulator.append(contentsOf: UnsafeBufferPointer(start: ptr, count: outLen))
-        }
-
-        while sampleAccumulator.count >= kChunkSamples {
-            let chunk = Array(sampleAccumulator.prefix(kChunkSamples))
-            sampleAccumulator.removeFirst(kChunkSamples)
-            onAudioChunk?(chunk.withUnsafeBytes { Data($0) })
+        if outPCM.frameLength > 0 {
+            onAudioBuffer?(outPCM)
         }
     }
 }

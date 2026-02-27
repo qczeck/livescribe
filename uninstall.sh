@@ -7,10 +7,8 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BOLD='\033[1m'; NC='\033[0m'
 
 ok()   { echo -e "  ${GREEN}✓${NC} $*"; }
-warn() { echo -e "  ${YELLOW}⚠${NC} $*"; }
 skip() { echo -e "  –  $*"; }
-
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+warn() { echo -e "  ${YELLOW}⚠${NC} $*"; }
 
 echo -e "\n${BOLD}LiveScribe — Uninstall${NC}"
 echo    "══════════════════════"
@@ -22,23 +20,6 @@ if [ -d "/Applications/LiveScribe.app" ]; then
     ok "Removed /Applications/LiveScribe.app"
 else
     skip "/Applications/LiveScribe.app not found"
-fi
-
-# ── Config ────────────────────────────────────────────────────────────────────
-if [ -d "$HOME/.config/livescribe" ]; then
-    rm -rf "$HOME/.config/livescribe"
-    ok "Removed ~/.config/livescribe"
-else
-    skip "~/.config/livescribe not found"
-fi
-
-# ── Python server + venv (Application Support) ───────────────────────────────
-SUPPORT_DIR="$HOME/Library/Application Support/LiveScribe"
-if [ -d "$SUPPORT_DIR" ]; then
-    rm -rf "$SUPPORT_DIR"
-    ok "Removed ~/Library/Application Support/LiveScribe"
-else
-    skip "~/Library/Application Support/LiveScribe not found"
 fi
 
 # ── Transcripts ───────────────────────────────────────────────────────────────
@@ -54,6 +35,18 @@ if [ -d "$TRANSCRIPTS" ]; then
     else
         skip "Kept ~/Documents/LiveScribe"
     fi
+fi
+
+# ── Legacy v1 cleanup (config + Python server) ───────────────────────────────
+if [ -d "$HOME/.config/livescribe" ]; then
+    rm -rf "$HOME/.config/livescribe"
+    ok "Removed legacy ~/.config/livescribe"
+fi
+
+SUPPORT_DIR="$HOME/Library/Application Support/LiveScribe"
+if [ -d "$SUPPORT_DIR" ]; then
+    rm -rf "$SUPPORT_DIR"
+    ok "Removed legacy ~/Library/Application Support/LiveScribe"
 fi
 
 echo -e "\n${BOLD}${GREEN}Done.${NC} The repo folder itself was not removed.\n"
