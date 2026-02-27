@@ -48,7 +48,7 @@ if [ -d "$TRANSCRIPTS" ]; then
     warn "Transcripts found at ~/Documents/LiveScribe"
     printf "  Delete them? [y/N] "
     read -r answer
-    if [[ "${answer,,}" == "y" ]]; then
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
         rm -rf "$TRANSCRIPTS"
         ok "Removed ~/Documents/LiveScribe"
     else
