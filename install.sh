@@ -32,6 +32,13 @@ APP_DEST="/Applications/LiveScribe.app"
 echo -e "\n${BOLD}LiveScribe — Setup${NC}"
 echo    "══════════════════"
 
+# Ensure Homebrew's bin is in PATH (not always set in non-interactive shells)
+if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+
 # ── 1. Xcode ──────────────────────────────────────────────────────────────────
 step 1 "Checking Xcode"
 

@@ -47,11 +47,10 @@ final class TranscriptionClient: NSObject {
 
     /// Send a chunk of raw float32 audio data to the Python server.
     func sendAudio(_ data: Data) {
-        task?.send(.data(data)) { [weak self] error in
-            if let error {
-                self?.onError?("Audio send failed: \(error.localizedDescription)")
-            }
-        }
+        // Silently drop send errors — if the connection is down the WebSocket
+        // delegate already surfaces the underlying error; repeating it for
+        // every audio chunk would spam the user with redundant messages.
+        task?.send(.data(data)) { _ in }
     }
 
     // MARK: - Private helpers
