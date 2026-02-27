@@ -122,9 +122,6 @@ The app lives in the menu bar only (no Dock icon). Click outside the popover to 
 │       ├── transcriber.py           # mlx-whisper / faster-whisper wrapper
 │       ├── test_client.py           # Integration test
 │       └── requirements.txt
-└── reel_transcriber_cli/            # Original CLI tool (separate project)
-    ├── reel_transcriber.py          # Download + transcribe Instagram reels
-    └── requirements.txt
 ```
 
 ---
@@ -139,22 +136,6 @@ All text frames are JSON. Binary frames are raw `float32` audio.
 | Swift → Python | binary | Raw float32 samples (16 kHz mono, little-endian) |
 | Python → Swift | text | `{"type": "transcript", "text": "...", "is_final": false}` |
 | Python → Swift | text | `{"type": "error", "message": "..."}` |
-
----
-
-## Reel Transcriber CLI
-
-The `reel_transcriber_cli/` directory contains an older standalone tool to download and transcribe Instagram reels from the command line.
-
-```bash
-cd reel_transcriber_cli
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-
-python reel_transcriber.py --url https://www.instagram.com/reel/XXXXX/ -o out.txt
-python reel_transcriber.py --url <url> -o out.txt --device mps   # Apple Silicon
-python reel_transcriber.py --url <url> -o out.txt --timestamps   # include [MM:SS]
-```
 
 ---
 
